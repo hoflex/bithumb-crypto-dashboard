@@ -1,4 +1,4 @@
-// ✅ 실시간 데이터 기반 강력매수 로직 + 거래량/김프/온체인 연동 + 시그널 로그/필터/정렬 기능 추가 + 시그널 리스트뷰
+// ✅ 실시간 데이터 기반 강력매수 로직 + 거래량/김프/온체인 연동 + 시그널 로그/필터/정렬 기능 추가 + 시그널 리스트뷰 + 매수 적정가 표시 추가
 class BithumDashboard {
   constructor() {
     this.apiBase = 'https://api.bithumb.com/public';
@@ -12,59 +12,18 @@ class BithumDashboard {
     this.signalLog = []; 
     this.volumeData = {}; 
     this.premiumData = {}; 
-    this.fetchOnchainData();
+    this.top20Coins = [];
+    this.fetchTopCoinsAndOnchainData();
     this.connectWebSocket();
     this.setupUIEvents();
+    setInterval(() => this.fetchTopCoinsAndOnchainData(), 1000 * 60 * 30); // 30분마다 재요청
   }
 
-  async fetchOnchainData() {
-    try {
-      const supportedAssets = ['BTC', 'ETH', 'XRP', 'ADA', 'DOGE'];
-      for (const asset of supportedAssets) {
-        const res = await fetch(`https://api.glassnode.com/v1/metrics/transactions/transfers_volume_to_exchanges?api_key=demo&asset=${asset}&interval=1h`);
-        const data = await res.json();
-        const latest = data[data.length - 1];
-        this.onchainInflow[asset] = latest.v;
-      }
-    } catch (e) {
-      console.error('온체인 데이터 실패:', e);
-    }
-  }
-
-  setupUIEvents() {
-    const closeSettings = document.getElementById('close-settings');
-    const settingsModal = document.getElementById('settings-modal');
-    const settingsBtn = document.getElementById('settings-btn');
-
-    if (closeSettings && settingsModal) {
-      closeSettings.onclick = () => {
-        settingsModal.classList.add('hidden');
-        settingsModal.style.display = 'none';
-      };
-    }
-
-    window.addEventListener('click', (e) => {
-      if (e.target === settingsModal) {
-        settingsModal.classList.add('hidden');
-        settingsModal.style.display = 'none';
-      }
-    });
-
-    if (settingsBtn && settingsModal) {
-      settingsBtn.onclick = () => {
-        settingsModal.classList.remove('hidden');
-        settingsModal.style.display = 'flex';
-      };
-    }
-
-    const showLogBtn = document.getElementById('show-signal-log');
-    const signalLogContainer = document.getElementById('signal-log');
-    if (showLogBtn && signalLogContainer) {
-      showLogBtn.onclick = () => {
-        signalLogContainer.classList.toggle('hidden');
-        this.renderSignalLog();
-      };
-    }
+  calculateBuyZone(prices) {
+    if (prices.length < 20) return null;
+    const sorted = [...prices].sort((a, b) => a - b);
+    const low = sorted[Math.floor(sorted.length * 0.2)];
+    return low; // 하위 20% 지점 기준
   }
 
   renderSignalLog() {
@@ -82,22 +41,23 @@ class BithumDashboard {
         <td>${entry.cci}</td>
         <td>₩${entry.inflow}</td>
         <td>${entry.volume}</td>
+        <td>₩${entry.buyZone}</td>
       `;
       container.appendChild(row);
     });
   }
 
   async connectWebSocket() {
-    const response = await fetch(`${this.apiBase}/ticker/ALL_KRW`);
-    const json = await response.json();
-    const coins = Object.keys(json.data).filter(key => key !== 'date');
+    while (!this.top20Coins.length) {
+      await new Promise(r => setTimeout(r, 500));
+    }
 
     this.socket = new WebSocket('wss://pubwss.bithumb.com/pub/ws');
 
     this.socket.addEventListener('open', () => {
       this.socket.send(JSON.stringify({
         type: 'ticker',
-        symbols: coins.map(c => `${c}_KRW`),
+        symbols: this.top20Coins.map(c => `${c}_KRW`),
         tickTypes: ['24H']
       }));
     });
@@ -122,6 +82,7 @@ class BithumDashboard {
         const rsi = this.calculateRSI(prices);
         const macdResult = this.calculateMACD(prices);
         const cci = this.calculateCCI(this.priceHistory[coin]);
+        const buyZone = this.calculateBuyZone(prices);
 
         const inflow = this.onchainInflow[coin] || 0;
         const inflowLimit = 500000000;
@@ -140,6 +101,7 @@ class BithumDashboard {
             signal,
             inflow,
             volume,
+            buyZone
           });
           this.allowedCoins.add(coin);
 
@@ -151,7 +113,8 @@ class BithumDashboard {
             macd: macdResult.macd.toFixed(3),
             cci: cci.toFixed(1),
             inflow: inflow.toLocaleString(),
-            volume: volume.toLocaleString()
+            volume: volume.toLocaleString(),
+            buyZone: buyZone ? Math.round(buyZone).toLocaleString() : '-'
           };
           this.signalLog.push(logEntry);
         } else {
@@ -170,8 +133,6 @@ class BithumDashboard {
       }
     });
   }
-
-  // ... 나머지 기존 함수 유지 (RSI, MACD, CCI, updateChart 등 동일)
 
   renderMarketTable(data) {
     const tbody = document.getElementById('market-data-body');
@@ -192,6 +153,7 @@ class BithumDashboard {
         <td>${coin.cci.toFixed(1)}</td>
         <td>₩${coin.inflow?.toLocaleString() || 'N/A'}</td>
         <td>${coin.volume.toLocaleString()}</td>
+        <td>₩${coin.buyZone ? Math.round(coin.buyZone).toLocaleString() : '-'}</td>
         <td><span class="signal signal-strong-buy">강력 매수</span></td>
         <td><button class="btn btn--sm action-button btn--primary">매수</button></td>
       `;
