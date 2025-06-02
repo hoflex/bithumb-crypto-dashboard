@@ -1,4 +1,4 @@
-// app.js (v3.2 with chart modal)
+// app.js (v3.3 with TradingView mini chart embed)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
@@ -98,8 +98,8 @@ class BithumbDashboard {
   showChart(symbol) {
     const modal = document.getElementById("chart-modal");
     const iframe = document.getElementById("chart-frame");
-    iframe.src = `https://www.tradingview.com/chart/?symbol=BITHUMB:${symbol}KRW`;
-    modal.style.display = "block";
+    iframe.src = `https://s.tradingview.com/embed-widget/mini-symbol-overview/?symbol=BITHUMB:${symbol}KRW&locale=kr&width=100%&height=100%`;
+    modal.style.display = "flex";
   }
 
   setupChartModal() {
