@@ -7,46 +7,49 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Bithumb Crypto Dashboard</h1>
-  <h2>강력매수 신호 감지</h2>
+  <div class="container">
+    <h1>Bithumb 실시간 암호화폐 대시보드</h1>
 
-  <table id="market-data">
-    <thead>
-      <tr>
-        <th>코인</th>
-        <th>현재가</th>
-        <th>변동률</th>
-        <th>RSI</th>
-        <th>MACD</th>
-        <th>CCI</th>
-        <th>온체인</th>
-        <th>거래량</th>
-        <th>적정가</th>
-        <th>시그널</th>
-        <th>사유</th>
-      </tr>
-    </thead>
-    <tbody id="market-data-body"></tbody>
-  </table>
+    <table id="market-data">
+      <thead>
+        <tr>
+          <th>코인</th>
+          <th>현재가</th>
+          <th>변동률</th>
+          <th>RSI</th>
+          <th>MACD</th>
+          <th>CCI</th>
+          <th>온체인</th>
+          <th>거래량</th>
+          <th>적정가</th>
+          <th>시그널</th>
+          <th>사유</th>
+        </tr>
+      </thead>
+      <tbody id="market-data-body">
+      </tbody>
+    </table>
 
-  <h2>강력매수 시그널 로그</h2>
-  <table id="signal-log">
-    <thead>
-      <tr>
-        <th>시간</th>
-        <th>코인</th>
-        <th>현재가</th>
-        <th>RSI</th>
-        <th>MACD</th>
-        <th>CCI</th>
-        <th>온체인</th>
-        <th>거래량</th>
-        <th>적정가</th>
-        <th>사유</th>
-      </tr>
-    </thead>
-    <tbody id="signal-log-body"></tbody>
-  </table>
+    <h2>💡 강력매수 시그널 로그</h2>
+    <table id="signal-log">
+      <thead>
+        <tr>
+          <th>시간</th>
+          <th>코인</th>
+          <th>현재가</th>
+          <th>RSI</th>
+          <th>MACD</th>
+          <th>CCI</th>
+          <th>온체인</th>
+          <th>거래량</th>
+          <th>적정가</th>
+          <th>시그널 사유</th>
+        </tr>
+      </thead>
+      <tbody id="signal-log-body">
+      </tbody>
+    </table>
+  </div>
 
   <script src="app.js"></script>
 </body>
