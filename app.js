@@ -1,4 +1,4 @@
-// app.js (v4.0 - CORS 프록시 적용 및 실시간 데이터 복원)
+// app.js (v4.1 - 오류 방지 및 API 응답 유효성 검사 추가)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://corsproxy.io/?https://api.bithumb.com/public/ticker/ALL_KRW";
@@ -84,11 +84,16 @@ class BithumbDashboard {
     try {
       const res = await fetch(this.apiBase);
       const json = await res.json();
+
+      if (!json || !json.data || typeof json.data !== 'object') {
+        throw new Error("API 응답이 비어있거나 유효하지 않습니다.");
+      }
+
       const data = json.data;
       const now = new Date().toLocaleTimeString();
 
       this.coins = Object.entries(data)
-        .filter(([key, val]) => key !== 'date' && !isNaN(parseFloat(val.fluctate_rate_24H)))
+        .filter(([key, val]) => key !== 'date' && val && !isNaN(parseFloat(val.fluctate_rate_24H)))
         .map(([symbol, val]) => {
           const fluctate = parseFloat(val.fluctate_rate_24H);
           const price = parseFloat(val.closing_price);
@@ -133,6 +138,7 @@ class BithumbDashboard {
       this.renderSignalLog(this.coins.filter(c => c.signal === "강력매수"));
     } catch (err) {
       console.error("데이터 로딩 오류:", err);
+      alert("📛 데이터 불러오기 실패: API 연결에 문제가 있습니다.");
     }
   }
 
