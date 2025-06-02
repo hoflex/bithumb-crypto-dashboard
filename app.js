@@ -1,7 +1,7 @@
-// app.js (v3.9 - CORS 오류 제거 및 fallback 폰트 적용)
+// app.js (v4.0 - CORS 프록시 적용 및 실시간 데이터 복원)
 class BithumbDashboard {
   constructor() {
-    this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
+    this.apiBase = "https://corsproxy.io/?https://api.bithumb.com/public/ticker/ALL_KRW";
     this.refreshInterval = 15 * 60 * 1000;
     this.maxCoins = 20;
     this.priceHistory = {};
