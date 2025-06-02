@@ -1,6 +1,7 @@
 class BithumbDashboard {
   constructor() {
     this.apiUrl = "https://api.bithumb.com/public/ticker/ALL_KRW";
+    this.prevVolumes = {}; // 이전 거래량 저장용
     this.init();
   }
 
@@ -32,6 +33,17 @@ class BithumbDashboard {
         const signal = this.getSignal(rsi, macd, cci);
         const reason = this.getSignalReason(rsi, macd, cci);
 
+        // 거래량 급등 여부 판단
+        const prevVolume = this.prevVolumes[coin] || 0;
+        const currentVolume = parseFloat(info.units_traded);
+        const volumeChange = ((currentVolume - prevVolume) / (prevVolume || 1)) * 100;
+        let onchainSignal = "정상";
+        if (volumeChange > 100) onchainSignal = "급등";
+        else if (volumeChange > 30) onchainSignal = "주의";
+
+        // 현재 거래량 저장
+        this.prevVolumes[coin] = currentVolume;
+
         const row = document.createElement("tr");
         row.innerHTML = `
           <td class="coin-name" data-coin="${coin}">${coin}</td>
@@ -40,7 +52,7 @@ class BithumbDashboard {
           <td>${rsi}</td>
           <td>${macd}</td>
           <td>${cci}</td>
-          <td>-</td>
+          <td>${onchainSignal}</td>
           <td>${info.units_traded.toLocaleString()}</td>
           <td>-</td>
           <td>${signal}</td>
@@ -57,7 +69,7 @@ class BithumbDashboard {
             <td>${rsi}</td>
             <td>${macd}</td>
             <td>${cci}</td>
-            <td>-</td>
+            <td>${onchainSignal}</td>
             <td>${info.units_traded.toLocaleString()}</td>
             <td>-</td>
             <td>${reason}</td>
