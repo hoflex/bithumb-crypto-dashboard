@@ -1,4 +1,4 @@
-// app.js (v3.8 - 강력매수 사유 표기 포함)
+// app.js (v3.9 - CORS 오류 제거 및 fallback 폰트 적용)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
