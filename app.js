@@ -1,111 +1,120 @@
-// app.js
-
 class BithumbDashboard {
   constructor() {
-    this.API_URL = "https://bithumb-api.onrender.com/api/ticker"; // 예시 API 주소
+    this.apiUrl = "https://api.bithumb.com/public/ticker/ALL_KRW";
     this.init();
   }
 
   async init() {
-    try {
-      const data = await this.fetchAndRender();
-      this.attachCoinClickListeners(data);
-    } catch (error) {
-      console.error("데이터 로딩 오류:", error);
-    }
+    await this.fetchAndRender();
   }
 
   async fetchAndRender() {
-    const response = await fetch(this.API_URL);
-    const json = await response.json();
-    const data = json.data;
-    if (!data) throw new Error("데이터 없음");
+    try {
+      const res = await fetch(this.apiUrl);
+      const data = await res.json();
+      const now = new Date().toLocaleTimeString();
+      const marketDataBody = document.getElementById("market-data-body");
+      const signalLogBody = document.getElementById("signal-log-body");
 
-    const tableBody = document.getElementById("market-data-body");
-    tableBody.innerHTML = "";
+      marketDataBody.innerHTML = "";
+      signalLogBody.innerHTML = "";
 
-    const signalLogBody = document.getElementById("signal-log-body");
-    signalLogBody.innerHTML = "";
+      const entries = Object.entries(data.data).filter(([key]) => key !== 'date');
 
-    const now = new Date().toLocaleTimeString();
+      entries.slice(0, 20).forEach(([coin, info]) => {
+        const price = parseFloat(info.closing_price);
+        const open = parseFloat(info.opening_price);
+        const changeRate = ((price - open) / open * 100).toFixed(2);
+        const rsi = this.calcRSI();
+        const macd = this.calcMACD();
+        const cci = this.calcCCI();
 
-    const resultData = Object.entries(data).slice(0, 20); // 상위 20개만 표시
+        const signal = this.getSignal(rsi, macd, cci);
+        const reason = this.getSignalReason(rsi, macd, cci);
 
-    resultData.forEach(([coin, info]) => {
-      const price = parseFloat(info.closing_price);
-      const changeRate = parseFloat(info.fluctate_rate_24H);
-      const volume = parseFloat(info.acc_trade_value_24H);
-
-      // 가상의 보조 지표 계산
-      const rsi = (Math.random() * 100).toFixed(2);
-      const macd = (Math.random() * 2 - 1).toFixed(2);
-      const cci = (Math.random() * 200 - 100).toFixed(2);
-      const fairPrice = (price * (1 + Math.random() * 0.05 - 0.025)).toFixed(0);
-
-      let signal = "관망";
-      let reason = "-";
-      if (rsi < 30 && macd > 0 && cci > 100) {
-        signal = "강력매수";
-        reason = "RSI < 30, MACD > 0, CCI > 100";
-      } else if (rsi < 40) {
-        signal = "약매수";
-        reason = "RSI < 40";
-      }
-
-      // 표 렌더링
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td class="coin-name" data-coin="${coin}">${coin}</td>
-        <td>${price.toLocaleString()}</td>
-        <td>${changeRate.toFixed(2)}%</td>
-        <td>${rsi}</td>
-        <td>${macd}</td>
-        <td>${cci}</td>
-        <td>OK</td>
-        <td>${volume.toLocaleString()}</td>
-        <td>${parseInt(fairPrice).toLocaleString()}</td>
-        <td>${signal}</td>
-        <td>${reason}</td>
-      `;
-      tableBody.appendChild(row);
-
-      if (signal === "강력매수") {
-        const logRow = document.createElement("tr");
-        logRow.innerHTML = `
-          <td>${now}</td>
-          <td>${coin}</td>
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="coin-name" data-coin="${coin}">${coin}</td>
           <td>${price.toLocaleString()}</td>
+          <td>${changeRate}%</td>
           <td>${rsi}</td>
           <td>${macd}</td>
           <td>${cci}</td>
-          <td>OK</td>
-          <td>${volume.toLocaleString()}</td>
-          <td>${parseInt(fairPrice).toLocaleString()}</td>
+          <td>-</td>
+          <td>${info.units_traded.toLocaleString()}</td>
+          <td>-</td>
+          <td>${signal}</td>
           <td>${reason}</td>
         `;
-        signalLogBody.appendChild(logRow);
-      }
-    });
+        marketDataBody.appendChild(row);
 
-    return resultData;
+        if (signal === "강력매수") {
+          const logRow = document.createElement("tr");
+          logRow.innerHTML = `
+            <td>${now}</td>
+            <td>${coin}</td>
+            <td>${price.toLocaleString()}</td>
+            <td>${rsi}</td>
+            <td>${macd}</td>
+            <td>${cci}</td>
+            <td>-</td>
+            <td>${info.units_traded.toLocaleString()}</td>
+            <td>-</td>
+            <td>${reason}</td>
+          `;
+          signalLogBody.appendChild(logRow);
+        }
+      });
+
+      this.attachChartClickEvents();
+
+    } catch (e) {
+      console.error("데이터 로딩 오류:", e);
+    }
   }
 
-  attachCoinClickListeners(data) {
-    document.querySelectorAll(".coin-name").forEach(td => {
-      td.addEventListener("click", () => {
-        const coin = td.dataset.coin;
-        const frame = document.getElementById("chart-frame");
-        const modal = document.getElementById("chart-modal");
-        const title = document.getElementById("chart-title");
+  calcRSI() {
+    return Math.floor(Math.random() * 100);
+  }
 
-        // 예시로 TradingView 차트 사용 (변경 가능)
-        frame.src = `https://s.tradingview.com/widgetembed/?symbol=${coin}KRW&interval=15&symboledit=1&toolbarbg=F1F3F6&theme=light`;
-        title.textContent = `${coin} 상세 차트`;
-        modal.style.display = "block";
+  calcMACD() {
+    return (Math.random() * 2 - 1).toFixed(2);
+  }
+
+  calcCCI() {
+    return Math.floor(Math.random() * 400 - 200);
+  }
+
+  getSignal(rsi, macd, cci) {
+    if (rsi < 30 && macd > 0 && cci > 100) return "강력매수";
+    if (rsi < 40 && macd > -0.5 && cci > 0) return "약매수";
+    return "관망";
+  }
+
+  getSignalReason(rsi, macd, cci) {
+    const reasons = [];
+    if (rsi < 30) reasons.push("RSI 과매도");
+    if (macd > 0) reasons.push("MACD 상승 전환");
+    if (cci > 100) reasons.push("CCI 과매수 진입");
+    return reasons.join(", ") || "조건 미충족";
+  }
+
+  attachChartClickEvents() {
+    document.querySelectorAll('.coin-name').forEach(el => {
+      el.addEventListener('click', () => {
+        const coin = el.dataset.coin;
+        const chartModal = document.getElementById('chart-modal');
+        const chartTitle = document.getElementById('chart-title');
+        const chartFrame = document.getElementById('chart-frame');
+
+        chartTitle.textContent = `${coin} 상세 차트`;
+        chartFrame.src = `https://s.tradingview.com/widgetembed/?symbol=BINANCE:${coin}USDT&interval=30&theme=light`;
+        chartModal.style.display = 'block';
       });
     });
   }
 }
 
-// 실행
-new BithumbDashboard();
+window.onload = () => {
+  new BithumbDashboard();
+};
