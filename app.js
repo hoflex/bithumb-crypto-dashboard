@@ -1,4 +1,4 @@
-// app.js (v3.6 - 테이블 헤더 클릭 정렬 기능 추가 + 미니차트 실시간 반영)
+// app.js (v3.7 - 업그레이드: 실시간 차트분석 기반 강력매수 시그널)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
@@ -48,6 +48,41 @@ class BithumbDashboard {
     });
   }
 
+  calculateIndicators(data) {
+    const close = data;
+    const len = close.length;
+    if (len < 14) return { rsi: 0, macd: 0, cci: 0 };
+
+    // RSI
+    let gains = 0, losses = 0;
+    for (let i = len - 14; i < len - 1; i++) {
+      const diff = close[i + 1] - close[i];
+      if (diff > 0) gains += diff;
+      else losses -= diff;
+    }
+    const avgGain = gains / 14;
+    const avgLoss = losses / 14;
+    const rs = avgGain / (avgLoss || 1);
+    const rsi = 100 - (100 / (1 + rs));
+
+    // MACD (12, 26 EMA diff 시뮬레이션)
+    const ema12 = close.slice(-12).reduce((a, b) => a + b, 0) / 12;
+    const ema26 = close.slice(-26).reduce((a, b) => a + b, 0) / 26;
+    const macd = ema12 - ema26;
+
+    // CCI (간단 평균 편차 기준)
+    const typical = close;
+    const ma = typical.reduce((a, b) => a + b, 0) / typical.length;
+    const meanDev = typical.reduce((a, b) => a + Math.abs(b - ma), 0) / typical.length;
+    const cci = (typical[typical.length - 1] - ma) / (0.015 * (meanDev || 1));
+
+    return {
+      rsi: Math.round(rsi),
+      macd: Math.round(macd * 100),
+      cci: Math.round(cci)
+    };
+  }
+
   async fetchAndRender() {
     try {
       const res = await fetch(this.apiBase);
@@ -62,25 +97,20 @@ class BithumbDashboard {
           const price = parseFloat(val.closing_price);
           const volume = parseFloat(val.units_traded_24H);
           const onchain = Math.random() * 100;
-          const rsi = Math.floor(50 + Math.random() * 50);
-          const macd = Math.floor(50 + Math.random() * 50);
-          const cci = Math.floor(50 + Math.random() * 50);
           const fairPrice = price * 0.96;
 
-          let signal = "관망";
-          if (rsi > 70 && macd > 70 && cci > 70 && fluctate > 2) {
-            signal = "강력매수";
-          } else if (rsi > 60 && macd > 60 && cci > 60 && fluctate > 1) {
-            signal = "약매수";
-          }
-
           // 가격 히스토리 저장
-          if (!this.priceHistory[symbol]) {
-            this.priceHistory[symbol] = [];
-          }
+          if (!this.priceHistory[symbol]) this.priceHistory[symbol] = [];
           this.priceHistory[symbol].push(price);
-          if (this.priceHistory[symbol].length > 20) {
-            this.priceHistory[symbol].shift();
+          if (this.priceHistory[symbol].length > 26) this.priceHistory[symbol].shift();
+
+          const { rsi, macd, cci } = this.calculateIndicators(this.priceHistory[symbol]);
+
+          let signal = "관망";
+          if (rsi > 70 && macd > 50 && cci > 100 && fluctate > 2) {
+            signal = "강력매수";
+          } else if (rsi > 60 && macd > 0 && cci > 50 && fluctate > 1) {
+            signal = "약매수";
           }
 
           return {
