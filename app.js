@@ -1,10 +1,10 @@
-// app.js (v3.7 - 업그레이드: 실시간 차트분석 기반 강력매수 시그널)
+// app.js (v3.8 - 강력매수 사유 표기 포함)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
-    this.refreshInterval = 15 * 60 * 1000; // 15분
+    this.refreshInterval = 15 * 60 * 1000;
     this.maxCoins = 20;
-    this.priceHistory = {}; // 각 코인의 가격 히스토리 저장용
+    this.priceHistory = {};
     this.currentSortKey = "fluctate";
     this.sortDescending = true;
     this.coins = [];
@@ -53,7 +53,6 @@ class BithumbDashboard {
     const len = close.length;
     if (len < 14) return { rsi: 0, macd: 0, cci: 0 };
 
-    // RSI
     let gains = 0, losses = 0;
     for (let i = len - 14; i < len - 1; i++) {
       const diff = close[i + 1] - close[i];
@@ -65,12 +64,10 @@ class BithumbDashboard {
     const rs = avgGain / (avgLoss || 1);
     const rsi = 100 - (100 / (1 + rs));
 
-    // MACD (12, 26 EMA diff 시뮬레이션)
     const ema12 = close.slice(-12).reduce((a, b) => a + b, 0) / 12;
     const ema26 = close.slice(-26).reduce((a, b) => a + b, 0) / 26;
     const macd = ema12 - ema26;
 
-    // CCI (간단 평균 편차 기준)
     const typical = close;
     const ma = typical.reduce((a, b) => a + b, 0) / typical.length;
     const meanDev = typical.reduce((a, b) => a + Math.abs(b - ma), 0) / typical.length;
@@ -99,7 +96,6 @@ class BithumbDashboard {
           const onchain = Math.random() * 100;
           const fairPrice = price * 0.96;
 
-          // 가격 히스토리 저장
           if (!this.priceHistory[symbol]) this.priceHistory[symbol] = [];
           this.priceHistory[symbol].push(price);
           if (this.priceHistory[symbol].length > 26) this.priceHistory[symbol].shift();
@@ -107,10 +103,14 @@ class BithumbDashboard {
           const { rsi, macd, cci } = this.calculateIndicators(this.priceHistory[symbol]);
 
           let signal = "관망";
+          let reason = "-";
+
           if (rsi > 70 && macd > 50 && cci > 100 && fluctate > 2) {
             signal = "강력매수";
+            reason = `RSI(${rsi})>70, MACD(${macd})>50, CCI(${cci})>100, 변동률(${fluctate}%)>2`;
           } else if (rsi > 60 && macd > 0 && cci > 50 && fluctate > 1) {
             signal = "약매수";
+            reason = `RSI(${rsi})>60, MACD(${macd})>0, CCI(${cci})>50, 변동률(${fluctate}%)>1`;
           }
 
           return {
@@ -124,6 +124,7 @@ class BithumbDashboard {
             volume: parseFloat(volume.toFixed(2)),
             fairPrice: parseFloat(fairPrice.toFixed(2)),
             signal,
+            reason,
             time: now
           };
         });
@@ -163,7 +164,7 @@ class BithumbDashboard {
         <td>${coin.volume}</td>
         <td>${coin.fairPrice}</td>
         <td>${coin.signal}</td>
-        <td><button>매수</button></td>
+        <td>${coin.signal === "강력매수" ? `<span title="${coin.reason}">ⓘ</span>` : ""}</td>
       </tr>`;
       tbody.insertAdjacentHTML("beforeend", row);
       this.renderMiniChart(coin.symbol);
@@ -218,6 +219,7 @@ class BithumbDashboard {
         <td>${coin.onchain}</td>
         <td>${coin.volume}</td>
         <td>${coin.fairPrice}</td>
+        <td>${coin.reason}</td>
       </tr>`;
       logBody.insertAdjacentHTML("beforeend", row);
     });
