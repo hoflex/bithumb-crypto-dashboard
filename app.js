@@ -20,24 +20,24 @@ class BithumDashboard {
     const settingsBtn = document.getElementById('settings-btn');
 
     if (closeSettings && settingsModal) {
-      closeSettings.addEventListener('click', () => {
+      closeSettings.onclick = () => {
         settingsModal.classList.add('hidden');
         settingsModal.style.display = 'none';
-      });
-
-      settingsModal.addEventListener('click', (e) => {
-        if (e.target === settingsModal) {
-          settingsModal.classList.add('hidden');
-          settingsModal.style.display = 'none';
-        }
-      });
+      };
     }
 
+    window.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        settingsModal.classList.add('hidden');
+        settingsModal.style.display = 'none';
+      }
+    });
+
     if (settingsBtn && settingsModal) {
-      settingsBtn.addEventListener('click', () => {
+      settingsBtn.onclick = () => {
         settingsModal.classList.remove('hidden');
         settingsModal.style.display = 'flex';
-      });
+      };
     }
   }
 
@@ -56,7 +56,7 @@ class BithumDashboard {
       this.strongBuyCoins.clear();
       for (const [coin, info] of Object.entries(data)) {
         const chgRate = parseFloat(info.fluctate_rate_24H);
-        if (chgRate > 10) { // 강력 매수 조건 예시: 24시간 변동률 > 10%
+        if (chgRate > 5) { // ✅ 강력 매수 조건: 24시간 변동률 > 5%
           this.strongBuyCoins.add(coin);
         }
       }
