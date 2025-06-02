@@ -1,4 +1,4 @@
-// ✅ WebSocket 기반 실시간 데이터 반영 + 실시간 차트 + 설정창 닫기 기능까지 완성
+// ✅ WebSocket 기반 실시간 데이터 반영 + 실시간 차트 + 설정창 닫기 기능 + 강력매수 필터링 & 1시간마다 주요코인 업데이트
 class BithumDashboard {
   constructor() {
     this.apiBase = 'https://api.bithumb.com/public';
@@ -7,8 +7,11 @@ class BithumDashboard {
     this.chart = null;
     this.socket = null;
     this.priceHistory = {}; // 실시간 차트용 데이터 저장
+    this.strongBuyCoins = new Set();
+    this.lastStrongBuyUpdate = 0;
     this.connectWebSocket();
     this.setupUIEvents();
+    this.scheduleStrongBuyUpdate();
   }
 
   setupUIEvents() {
@@ -36,14 +39,29 @@ class BithumDashboard {
         settingsModal.style.display = 'flex';
       });
     }
-  });
+  }
 
-      settingsModal.addEventListener('click', (e) => {
-        if (e.target === settingsModal) {
-          settingsModal.classList.add('hidden');
-          settingsModal.style.display = 'none';
+  scheduleStrongBuyUpdate() {
+    this.fetchStrongBuyCoins();
+    setInterval(() => this.fetchStrongBuyCoins(), 60 * 60 * 1000); // 1시간마다
+  }
+
+  async fetchStrongBuyCoins() {
+    try {
+      const res = await fetch(`${this.apiBase}/ticker/ALL_KRW`);
+      const json = await res.json();
+      const data = json.data;
+      delete data.date;
+
+      this.strongBuyCoins.clear();
+      for (const [coin, info] of Object.entries(data)) {
+        const chgRate = parseFloat(info.fluctate_rate_24H);
+        if (chgRate > 10) { // 강력 매수 조건 예시: 24시간 변동률 > 10%
+          this.strongBuyCoins.add(coin);
         }
-      });
+      }
+    } catch (err) {
+      console.error('StrongBuy fetch error:', err);
     }
   }
 
@@ -66,6 +84,8 @@ class BithumDashboard {
       const data = JSON.parse(event.data);
       if (data && data.content) {
         const coin = data.content.symbol.split('_')[0];
+        if (!this.strongBuyCoins.has(coin)) return; // 강력매수 종목만 처리
+
         const price = Number(data.content.closePrice);
         const change24h = Number(data.content.chgRate);
 
@@ -81,7 +101,7 @@ class BithumDashboard {
           rsi: 50,
           macd: { macd: 0 },
           cci: 0,
-          signal: 'HOLD',
+          signal: 'STRONG_BUY',
         });
 
         const processedData = Array.from(this.marketData.values());
@@ -111,8 +131,8 @@ class BithumDashboard {
         <td>${coin.rsi.toFixed(1)}</td>
         <td>${coin.macd.macd.toFixed(3)}</td>
         <td>${coin.cci.toFixed(1)}</td>
-        <td><span class="signal signal-hold">홀딩</span></td>
-        <td><button class="btn btn--sm action-button btn--secondary">차트 보기</button></td>
+        <td><span class="signal signal-strong-buy">강력 매수</span></td>
+        <td><button class="btn btn--sm action-button btn--primary">매수</button></td>
       `;
       row.addEventListener('click', () => {
         this.selectedCoin = coin.symbol;
