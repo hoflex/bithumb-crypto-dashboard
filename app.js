@@ -1,4 +1,4 @@
-// app.js (v3.3 with TradingView mini chart embed)
+// app.js (v3.3 - 빗썸 차트 새 창으로 연결)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
@@ -10,7 +10,6 @@ class BithumbDashboard {
   async init() {
     await this.fetchAndRender();
     setInterval(() => this.fetchAndRender(), this.refreshInterval);
-    this.setupChartModal();
   }
 
   async fetchAndRender() {
@@ -95,24 +94,10 @@ class BithumbDashboard {
     });
   }
 
+  // 빗썸 거래페이지 새 창으로 열기
   showChart(symbol) {
-    const modal = document.getElementById("chart-modal");
-    const iframe = document.getElementById("chart-frame");
-    iframe.src = `https://s.tradingview.com/embed-widget/mini-symbol-overview/?symbol=BITHUMB:${symbol}KRW&locale=kr&width=100%&height=100%`;
-    modal.style.display = "flex";
-  }
-
-  setupChartModal() {
-    const modal = document.createElement("div");
-    modal.id = "chart-modal";
-    modal.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:9999;`;
-    modal.innerHTML = `
-      <div style="position:relative; width:90%; height:90%; background:#fff;">
-        <button style="position:absolute;top:10px;right:10px;z-index:1000;" onclick="document.getElementById('chart-modal').style.display='none'">닫기</button>
-        <iframe id="chart-frame" style="width:100%; height:100%; border:none;"></iframe>
-      </div>
-    `;
-    document.body.appendChild(modal);
+    const url = `https://www.bithumb.com/trade/${symbol}_KRW`;
+    window.open(url, '_blank');
   }
 
   renderSignalLog(coins) {
