@@ -1,9 +1,10 @@
-// app.js (v3.4 - 외부 차트 새창 + 미니 차트 내장 렌더링 추가)
+// app.js (v3.5 - 미니차트에 실시간 가격 데이터 적용)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
     this.refreshInterval = 15 * 60 * 1000; // 15분
     this.maxCoins = 20;
+    this.priceHistory = {}; // 각 코인의 가격 히스토리 저장용
     this.init();
   }
 
@@ -36,6 +37,15 @@ class BithumbDashboard {
             signal = "강력매수";
           } else if (rsi > 60 && macd > 60 && cci > 60 && fluctate > 1) {
             signal = "약매수";
+          }
+
+          // 가격 히스토리 저장
+          if (!this.priceHistory[symbol]) {
+            this.priceHistory[symbol] = [];
+          }
+          this.priceHistory[symbol].push(price);
+          if (this.priceHistory[symbol].length > 20) {
+            this.priceHistory[symbol].shift();
           }
 
           return {
@@ -99,22 +109,23 @@ class BithumbDashboard {
   }
 
   showChart(symbol) {
-    const url = `https://www.tradingview.com/symbols/${symbol}KRW/`; // faster than Bithumb page
+    const url = `https://www.tradingview.com/symbols/${symbol}KRW/`;
     window.open(url, '_blank');
   }
 
   renderMiniChart(symbol) {
-    // Generate mock mini chart data
     const canvas = document.getElementById(`mini-chart-${symbol}`);
-    if (!canvas) return;
+    if (!canvas || !this.priceHistory[symbol]) return;
     const ctx = canvas.getContext("2d");
-    const data = Array.from({ length: 20 }, () => 100 + Math.random() * 10);
+    const data = this.priceHistory[symbol];
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.beginPath();
-    ctx.moveTo(0, 30 - data[0] / 5);
+    const scaleY = 30 / Math.max(...data);
     data.forEach((val, i) => {
-      ctx.lineTo(i * 5, 30 - val / 5);
+      const x = i * (canvas.width / (data.length - 1));
+      const y = canvas.height - val * scaleY;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.strokeStyle = "#00bcd4";
     ctx.stroke();
