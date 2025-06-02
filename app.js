@@ -30,7 +30,7 @@ class BithumbDashboard {
           const macd = Math.floor(60 + Math.random() * 40);
           const cci = Math.floor(60 + Math.random() * 40);
           const fairPrice = price * 0.96;
-          const signal = rsi > 70 && macd > 70 && cci > 70 && fluctate > 2 ? "강력매수" : "";
+          const signal = rsi > 60 && macd > 60 && cci > 60 && fluctate > 2 ? "강력매수" : "";
 
           return {
             symbol,
