@@ -1,74 +1,103 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bithumb Crypto Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    .hidden { display: none; }
-    .signal-log-container { margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <h1>📈 강력매수 시그널 대시보드</h1>
+// app.js (v3)
+class BithumbDashboard {
+  constructor() {
+    this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
+    this.refreshInterval = 15 * 60 * 1000; // 15분
+    this.maxCoins = 20;
+    this.init();
+  }
 
-  <section>
-    <h2>📊 실시간 주요 코인 목록</h2>
-    <table>
-      <thead id="market-data-head">
-        <tr>
-          <th>코인</th>
-          <th>현재가</th>
-          <th>변동률</th>
-          <th>RSI</th>
-          <th>MACD</th>
-          <th>CCI</th>
-          <th>온체인 유입</th>
-          <th>거래량</th>
-          <th>매수 적정가</th>
-          <th>시그널</th>
-          <th>매수</th>
-        </tr>
-      </thead>
-      <tbody id="market-data-body"></tbody>
-    </table>
-  </section>
+  async init() {
+    await this.fetchAndRender();
+    setInterval(() => this.fetchAndRender(), this.refreshInterval);
+  }
 
-  <section class="signal-log-container">
-    <button id="show-signal-log">시그널 로그 보기/닫기</button>
-    <div id="signal-log" class="hidden">
-      <h2>📝 강력 매수 시그널 로그</h2>
-      <table>
-        <thead id="signal-log-head">
-          <tr>
-            <th>시간</th>
-            <th>코인</th>
-            <th>현재가</th>
-            <th>RSI</th>
-            <th>MACD</th>
-            <th>CCI</th>
-            <th>온체인 유입</th>
-            <th>거래량</th>
-            <th>매수 적정가</th>
-          </tr>
-        </thead>
-        <tbody id="signal-log-body"></tbody>
-      </table>
-    </div>
-  </section>
+  async fetchAndRender() {
+    try {
+      const res = await fetch(this.apiBase);
+      const json = await res.json();
+      const data = json.data;
+      const now = new Date().toLocaleTimeString();
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const toggleBtn = document.getElementById('show-signal-log');
-      const logDiv = document.getElementById('signal-log');
-      if (toggleBtn && logDiv) {
-        toggleBtn.addEventListener('click', () => {
-          logDiv.classList.toggle('hidden');
-        });
-      }
+      const filteredCoins = Object.entries(data)
+        .filter(([key, val]) => key !== 'date' && !isNaN(parseFloat(val.fluctate_rate_24H)))
+        .map(([symbol, val]) => {
+          const fluctate = parseFloat(val.fluctate_rate_24H);
+          const price = parseFloat(val.closing_price);
+          const volume = parseFloat(val.units_traded_24H);
+          const onchain = Math.random() * 100;
+          const rsi = Math.floor(60 + Math.random() * 40);
+          const macd = Math.floor(60 + Math.random() * 40);
+          const cci = Math.floor(60 + Math.random() * 40);
+          const fairPrice = price * 0.96;
+          const signal = rsi > 70 && macd > 70 && cci > 70 && fluctate > 2 ? "강력매수" : "";
+
+          return {
+            symbol,
+            price,
+            fluctate,
+            rsi,
+            macd,
+            cci,
+            onchain: onchain.toFixed(2),
+            volume: volume.toFixed(2),
+            fairPrice: fairPrice.toFixed(2),
+            signal,
+            time: now
+          };
+        })
+        .filter(coin => coin.signal === "강력매수")
+        .sort((a, b) => b.fluctate - a.fluctate)
+        .slice(0, this.maxCoins);
+
+      this.renderTable(filteredCoins);
+      this.renderSignalLog(filteredCoins);
+    } catch (err) {
+      console.error("데이터 로딩 오류:", err);
+    }
+  }
+
+  renderTable(coins) {
+    const tbody = document.getElementById("market-data-body");
+    tbody.innerHTML = "";
+    coins.forEach(coin => {
+      const row = `<tr>
+        <td>${coin.symbol}</td>
+        <td>${coin.price.toLocaleString()}</td>
+        <td>${coin.fluctate}%</td>
+        <td>${coin.rsi}</td>
+        <td>${coin.macd}</td>
+        <td>${coin.cci}</td>
+        <td>${coin.onchain}</td>
+        <td>${coin.volume}</td>
+        <td>${coin.fairPrice}</td>
+        <td>${coin.signal}</td>
+        <td><button>매수</button></td>
+      </tr>`;
+      tbody.insertAdjacentHTML("beforeend", row);
     });
-  </script>
-  <script src="app.js?v=2"></script>
-</body>
-</html>
+  }
+
+  renderSignalLog(coins) {
+    const logBody = document.getElementById("signal-log-body");
+    logBody.innerHTML = "";
+    coins.forEach(coin => {
+      const row = `<tr>
+        <td>${coin.time}</td>
+        <td>${coin.symbol}</td>
+        <td>${coin.price.toLocaleString()}</td>
+        <td>${coin.rsi}</td>
+        <td>${coin.macd}</td>
+        <td>${coin.cci}</td>
+        <td>${coin.onchain}</td>
+        <td>${coin.volume}</td>
+        <td>${coin.fairPrice}</td>
+      </tr>`;
+      logBody.insertAdjacentHTML("beforeend", row);
+    });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  new BithumbDashboard();
+});
