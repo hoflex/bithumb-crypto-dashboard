@@ -1,4 +1,4 @@
-// app.js (v3.3 - 빗썸 차트 새 창으로 연결)
+// app.js (v3.4 - 외부 차트 새창 + 미니 차트 내장 렌더링 추가)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
@@ -67,7 +67,10 @@ class BithumbDashboard {
     tbody.innerHTML = "";
     coins.forEach(coin => {
       const row = `<tr>
-        <td><a href="#" class="chart-link" data-symbol="${coin.symbol}">${coin.symbol}</a></td>
+        <td>
+          <a href="#" class="chart-link" data-symbol="${coin.symbol}">${coin.symbol}</a>
+          <canvas id="mini-chart-${coin.symbol}" width="100" height="30"></canvas>
+        </td>
         <td>${coin.price.toLocaleString()}</td>
         <td>${coin.fluctate}%</td>
         <td>${coin.rsi}</td>
@@ -80,6 +83,7 @@ class BithumbDashboard {
         <td><button>매수</button></td>
       </tr>`;
       tbody.insertAdjacentHTML("beforeend", row);
+      this.renderMiniChart(coin.symbol);
     });
     this.bindChartLinks();
   }
@@ -94,10 +98,26 @@ class BithumbDashboard {
     });
   }
 
-  // 빗썸 거래페이지 새 창으로 열기
   showChart(symbol) {
-    const url = `https://www.bithumb.com/trade/${symbol}_KRW`;
+    const url = `https://www.tradingview.com/symbols/${symbol}KRW/`; // faster than Bithumb page
     window.open(url, '_blank');
+  }
+
+  renderMiniChart(symbol) {
+    // Generate mock mini chart data
+    const canvas = document.getElementById(`mini-chart-${symbol}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const data = Array.from({ length: 20 }, () => 100 + Math.random() * 10);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(0, 30 - data[0] / 5);
+    data.forEach((val, i) => {
+      ctx.lineTo(i * 5, 30 - val / 5);
+    });
+    ctx.strokeStyle = "#00bcd4";
+    ctx.stroke();
   }
 
   renderSignalLog(coins) {
