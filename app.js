@@ -60,6 +60,7 @@ class BithumbDashboard {
           <td>${fibRetracement}, ${donchian}</td>
           <td>${signal}</td>
           <td>${reason}</td>
+          <td>${patternSignal}</td>
         `;
         marketDataBody.appendChild(row);
 
@@ -76,6 +77,7 @@ class BithumbDashboard {
             <td>${info.units_traded.toLocaleString()}</td>
             <td>${fibRetracement}, ${donchian}</td>
             <td>${reason}</td>
+            <td>${patternSignal}</td>
           `;
           signalLogBody.appendChild(logRow);
         }
@@ -112,14 +114,11 @@ class BithumbDashboard {
 
   detectPattern(price, open, high, low) {
     if (price > open && (high - low) / open > 0.05) return "양봉상승";
-
-    // 추가된 패턴 탐지
     if (price > open && (high - low) / low > 0.3 && (open - low) / (high - low) > 0.6) return "컵위드핸들";
     if ((high - price) / (high - low) > 0.6 && price > open && (price - open) / open > 0.02) return "역헤드앤숄더";
     if ((price - low) / (high - low) < 0.2 && (price - open) > 0 && (high - low) / open > 0.1) return "쌍바닥";
     if ((high - price) / (high - low) < 0.2 && (price - open) > 0.01) return "상승깃발";
     if ((high - low) / open > 0.05 && (price - open) > 0 && (price - low) / (high - low) > 0.7) return "패넌트";
-
     return "-";
   }
 
