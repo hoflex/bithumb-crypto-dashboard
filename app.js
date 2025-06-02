@@ -1,16 +1,51 @@
-// app.js (v3.5 - 미니차트에 실시간 가격 데이터 적용)
+// app.js (v3.6 - 테이블 헤더 클릭 정렬 기능 추가 + 미니차트 실시간 반영)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
     this.refreshInterval = 15 * 60 * 1000; // 15분
     this.maxCoins = 20;
     this.priceHistory = {}; // 각 코인의 가격 히스토리 저장용
+    this.currentSortKey = "fluctate";
+    this.sortDescending = true;
+    this.coins = [];
     this.init();
   }
 
   async init() {
+    this.bindSortEvents();
     await this.fetchAndRender();
     setInterval(() => this.fetchAndRender(), this.refreshInterval);
+  }
+
+  bindSortEvents() {
+    document.querySelectorAll("#market-data thead th").forEach(th => {
+      th.style.cursor = "pointer";
+      th.addEventListener("click", () => {
+        const keyMap = {
+          "코인": "symbol",
+          "현재가": "price",
+          "변동률": "fluctate",
+          "RSI": "rsi",
+          "MACD": "macd",
+          "CCI": "cci",
+          "온체인": "onchain",
+          "거래량": "volume",
+          "적정가": "fairPrice",
+          "시그널": "signal"
+        };
+        const header = th.textContent.trim();
+        const sortKey = keyMap[header];
+        if (sortKey) {
+          if (this.currentSortKey === sortKey) {
+            this.sortDescending = !this.sortDescending;
+          } else {
+            this.currentSortKey = sortKey;
+            this.sortDescending = true;
+          }
+          this.renderTable(this.coins);
+        }
+      });
+    });
   }
 
   async fetchAndRender() {
@@ -20,7 +55,7 @@ class BithumbDashboard {
       const data = json.data;
       const now = new Date().toLocaleTimeString();
 
-      const processedCoins = Object.entries(data)
+      this.coins = Object.entries(data)
         .filter(([key, val]) => key !== 'date' && !isNaN(parseFloat(val.fluctate_rate_24H)))
         .map(([symbol, val]) => {
           const fluctate = parseFloat(val.fluctate_rate_24H);
@@ -55,18 +90,16 @@ class BithumbDashboard {
             rsi,
             macd,
             cci,
-            onchain: onchain.toFixed(2),
-            volume: volume.toFixed(2),
-            fairPrice: fairPrice.toFixed(2),
+            onchain: parseFloat(onchain.toFixed(2)),
+            volume: parseFloat(volume.toFixed(2)),
+            fairPrice: parseFloat(fairPrice.toFixed(2)),
             signal,
             time: now
           };
-        })
-        .sort((a, b) => b.fluctate - a.fluctate)
-        .slice(0, this.maxCoins);
+        });
 
-      this.renderTable(processedCoins);
-      this.renderSignalLog(processedCoins.filter(c => c.signal === "강력매수"));
+      this.renderTable(this.coins);
+      this.renderSignalLog(this.coins.filter(c => c.signal === "강력매수"));
     } catch (err) {
       console.error("데이터 로딩 오류:", err);
     }
@@ -75,7 +108,17 @@ class BithumbDashboard {
   renderTable(coins) {
     const tbody = document.getElementById("market-data-body");
     tbody.innerHTML = "";
-    coins.forEach(coin => {
+
+    const sorted = [...coins].sort((a, b) => {
+      const aVal = a[this.currentSortKey];
+      const bVal = b[this.currentSortKey];
+      if (typeof aVal === "string") {
+        return this.sortDescending ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+      }
+      return this.sortDescending ? bVal - aVal : aVal - bVal;
+    }).slice(0, this.maxCoins);
+
+    sorted.forEach(coin => {
       const row = `<tr>
         <td>
           <a href="#" class="chart-link" data-symbol="${coin.symbol}">${coin.symbol}</a>
