@@ -1,4 +1,4 @@
-// ✅ WebSocket 기반 실시간 데이터 반영 + 실시간 차트 연결까지 완성
+// ✅ WebSocket 기반 실시간 데이터 반영 + 실시간 차트 + 설정창 닫기 기능까지 완성
 class BithumDashboard {
   constructor() {
     this.apiBase = 'https://api.bithumb.com/public';
@@ -8,6 +8,26 @@ class BithumDashboard {
     this.socket = null;
     this.priceHistory = {}; // 실시간 차트용 데이터 저장
     this.connectWebSocket();
+    this.setupUIEvents();
+  }
+
+  setupUIEvents() {
+    const closeSettings = document.getElementById('close-settings');
+    const settingsModal = document.getElementById('settings-modal');
+
+    if (closeSettings && settingsModal) {
+      closeSettings.addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        settingsModal.style.display = 'none';
+      });
+
+      settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+          settingsModal.classList.add('hidden');
+          settingsModal.style.display = 'none';
+        }
+      });
+    }
   }
 
   async connectWebSocket() {
