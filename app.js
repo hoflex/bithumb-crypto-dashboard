@@ -14,12 +14,29 @@ class BithumDashboard {
   setupUIEvents() {
     const closeSettings = document.getElementById('close-settings');
     const settingsModal = document.getElementById('settings-modal');
+    const settingsBtn = document.getElementById('settings-btn');
 
     if (closeSettings && settingsModal) {
       closeSettings.addEventListener('click', () => {
         settingsModal.classList.add('hidden');
         settingsModal.style.display = 'none';
       });
+
+      settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+          settingsModal.classList.add('hidden');
+          settingsModal.style.display = 'none';
+        }
+      });
+    }
+
+    if (settingsBtn && settingsModal) {
+      settingsBtn.addEventListener('click', () => {
+        settingsModal.classList.remove('hidden');
+        settingsModal.style.display = 'flex';
+      });
+    }
+  });
 
       settingsModal.addEventListener('click', (e) => {
         if (e.target === settingsModal) {
