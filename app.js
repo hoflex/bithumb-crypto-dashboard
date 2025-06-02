@@ -1,4 +1,4 @@
-// app.js (v3.1 with fallback display and signal levels)
+// app.js (v3.2 with chart modal)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
@@ -10,6 +10,7 @@ class BithumbDashboard {
   async init() {
     await this.fetchAndRender();
     setInterval(() => this.fetchAndRender(), this.refreshInterval);
+    this.setupChartModal();
   }
 
   async fetchAndRender() {
@@ -67,7 +68,7 @@ class BithumbDashboard {
     tbody.innerHTML = "";
     coins.forEach(coin => {
       const row = `<tr>
-        <td>${coin.symbol}</td>
+        <td><a href="#" class="chart-link" data-symbol="${coin.symbol}">${coin.symbol}</a></td>
         <td>${coin.price.toLocaleString()}</td>
         <td>${coin.fluctate}%</td>
         <td>${coin.rsi}</td>
@@ -81,6 +82,37 @@ class BithumbDashboard {
       </tr>`;
       tbody.insertAdjacentHTML("beforeend", row);
     });
+    this.bindChartLinks();
+  }
+
+  bindChartLinks() {
+    document.querySelectorAll(".chart-link").forEach(link => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const symbol = e.target.dataset.symbol;
+        this.showChart(symbol);
+      });
+    });
+  }
+
+  showChart(symbol) {
+    const modal = document.getElementById("chart-modal");
+    const iframe = document.getElementById("chart-frame");
+    iframe.src = `https://www.tradingview.com/chart/?symbol=BITHUMB:${symbol}KRW`;
+    modal.style.display = "block";
+  }
+
+  setupChartModal() {
+    const modal = document.createElement("div");
+    modal.id = "chart-modal";
+    modal.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:9999;`;
+    modal.innerHTML = `
+      <div style="position:relative; width:90%; height:90%; background:#fff;">
+        <button style="position:absolute;top:10px;right:10px;z-index:1000;" onclick="document.getElementById('chart-modal').style.display='none'">닫기</button>
+        <iframe id="chart-frame" style="width:100%; height:100%; border:none;"></iframe>
+      </div>
+    `;
+    document.body.appendChild(modal);
   }
 
   renderSignalLog(coins) {
