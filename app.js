@@ -1,171 +1,135 @@
-// ✅ 실시간 데이터 기반 강력매수 로직 + 거래량/김프/온체인 연동 + 시그널 로그/필터/정렬 기능 추가 + 시그널 리스트뷰 + 매수 적정가 표시 추가
-class BithumDashboard {
+// app.js
+
+class BithumbDashboard {
   constructor() {
-    this.apiBase = 'https://api.bithumb.com/public';
-    this.marketData = new Map();
-    this.selectedCoin = null;
-    this.chart = null;
-    this.socket = null;
-    this.priceHistory = {}; 
-    this.allowedCoins = new Set(); 
-    this.onchainInflow = {}; 
-    this.signalLog = []; 
-    this.volumeData = {}; 
-    this.premiumData = {}; 
-    this.top20Coins = [];
-    this.fetchTopCoinsAndOnchainData();
-    this.connectWebSocket();
-    this.setupUIEvents();
-    setInterval(() => this.fetchTopCoinsAndOnchainData(), 1000 * 60 * 30); // 30분마다 재요청
+    this.coinList = ['BTC', 'ETH', 'XRP', 'SOL', 'ADA', 'AVAX', 'DOGE', 'MATIC', 'DOT', 'BCH', 'TRX', 'ETC', 'EOS', 'LTC', 'LINK', 'XLM', 'AAVE', 'ATOM', 'SAND', 'AXS'];
+    this.apiUrl = 'https://api.bithumb.com/public/ticker/';
+    this.interval = 30 * 60 * 1000; // 30분
+    this.signalLog = [];
+    this.start();
   }
 
-  calculateBuyZone(prices) {
-    if (prices.length < 20) return null;
-    const sorted = [...prices].sort((a, b) => a - b);
-    const low = sorted[Math.floor(sorted.length * 0.2)];
-    return low; // 하위 20% 지점 기준
+  start() {
+    this.fetchAndRenderAll();
+    setInterval(() => this.fetchAndRenderAll(), this.interval);
   }
 
-  renderSignalLog() {
-    const container = document.getElementById('signal-log-body');
-    if (!container) return;
-    container.innerHTML = '';
-    this.signalLog.slice(-100).reverse().forEach(entry => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${entry.time}</td>
-        <td>${entry.symbol}</td>
-        <td>₩${Math.round(entry.price).toLocaleString()}</td>
-        <td>${entry.rsi}</td>
-        <td>${entry.macd}</td>
-        <td>${entry.cci}</td>
-        <td>₩${entry.inflow}</td>
-        <td>${entry.volume}</td>
-        <td>₩${entry.buyZone}</td>
-      `;
-      container.appendChild(row);
-    });
+  async fetchAndRenderAll() {
+    const marketData = await this.fetchMarketData();
+    this.renderMarketData(marketData);
+    this.renderSignalLog();
   }
 
-  async connectWebSocket() {
-    while (!this.top20Coins.length) {
-      await new Promise(r => setTimeout(r, 500));
-    }
+  async fetchMarketData() {
+    const results = [];
+    for (const coin of this.coinList) {
+      try {
+        const res = await fetch(`${this.apiUrl}${coin}_KRW`);
+        const json = await res.json();
+        const data = json.data;
 
-    this.socket = new WebSocket('wss://pubwss.bithumb.com/pub/ws');
+        const close = parseFloat(data.closing_price);
+        const open = parseFloat(data.opening_price);
+        const changeRate = ((close - open) / open * 100).toFixed(2);
+        const volume = parseFloat(data.units_traded_24H);
 
-    this.socket.addEventListener('open', () => {
-      this.socket.send(JSON.stringify({
-        type: 'ticker',
-        symbols: this.top20Coins.map(c => `${c}_KRW`),
-        tickTypes: ['24H']
-      }));
-    });
+        const rsi = this.mockIndicator();
+        const macd = this.mockIndicator();
+        const cci = this.mockIndicator();
+        const onchain = this.mockOnchain();
 
-    this.socket.addEventListener('message', (event) => {
-      const data = JSON.parse(event.data);
-      if (data && data.content) {
-        const coin = data.content.symbol.split('_')[0];
-        const price = Number(data.content.closePrice);
-        const change24h = Number(data.content.chgRate);
-        const volume = Number(data.content.value);
+        const priceHistory = this.generateMockHistory(close);
+        const buyZone = this.calculateBuyZone(priceHistory);
 
-        const timestamp = new Date();
-        if (!this.priceHistory[coin]) this.priceHistory[coin] = [];
-        this.priceHistory[coin].push({ time: timestamp, price });
-        if (this.priceHistory[coin].length > 100) this.priceHistory[coin].shift();
+        const isStrongBuy = rsi > 70 && macd > 70 && cci > 70 && parseFloat(changeRate) > 2;
 
-        this.volumeData[coin] = volume;
-        const prices = this.priceHistory[coin].map(p => p.price);
-        if (prices.length < 30) return;
-
-        const rsi = this.calculateRSI(prices);
-        const macdResult = this.calculateMACD(prices);
-        const cci = this.calculateCCI(this.priceHistory[coin]);
-        const buyZone = this.calculateBuyZone(prices);
-
-        const inflow = this.onchainInflow[coin] || 0;
-        const inflowLimit = 500000000;
-
-        const signal = (rsi < 30 && macdResult.macd > 0 && cci < -100 && inflow < inflowLimit)
-          ? 'STRONG_BUY' : 'HOLD';
-
-        if (signal === 'STRONG_BUY') {
-          this.marketData.set(coin, {
-            symbol: coin,
-            price,
-            change24h,
+        if (isStrongBuy) {
+          this.signalLog.push({
+            time: new Date().toLocaleTimeString(),
+            coin,
+            close,
             rsi,
-            macd: macdResult,
+            macd,
             cci,
-            signal,
-            inflow,
+            onchain,
             volume,
             buyZone
           });
-          this.allowedCoins.add(coin);
-
-          const logEntry = {
-            time: timestamp.toLocaleString(),
-            symbol: coin,
-            price,
-            rsi: rsi.toFixed(1),
-            macd: macdResult.macd.toFixed(3),
-            cci: cci.toFixed(1),
-            inflow: inflow.toLocaleString(),
-            volume: volume.toLocaleString(),
-            buyZone: buyZone ? Math.round(buyZone).toLocaleString() : '-'
-          };
-          this.signalLog.push(logEntry);
-        } else {
-          this.marketData.delete(coin);
-          this.allowedCoins.delete(coin);
         }
 
-        const processedData = Array.from(this.marketData.values())
-          .sort((a, b) => b.volume - a.volume);
-
-        this.renderMarketTable(processedData);
-
-        if (this.selectedCoin === coin) {
-          this.updateChart(coin);
-        }
+        results.push({ coin, close, changeRate, rsi, macd, cci, onchain, volume, buyZone, isStrongBuy });
+      } catch (e) {
+        console.error(`${coin} 데이터 오류:`, e);
       }
+    }
+    return results;
+  }
+
+  renderMarketData(data) {
+    const tbody = document.getElementById('market-data-body');
+    tbody.innerHTML = '';
+    data.forEach(d => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${d.coin}</td>
+        <td>${d.close.toLocaleString()}</td>
+        <td>${d.changeRate}%</td>
+        <td>${d.rsi}</td>
+        <td>${d.macd}</td>
+        <td>${d.cci}</td>
+        <td>${d.onchain}</td>
+        <td>${d.volume.toLocaleString()}</td>
+        <td>${d.buyZone.toLocaleString()}</td>
+        <td>${d.isStrongBuy ? '🔥 강력매수' : ''}</td>
+        <td>${d.isStrongBuy ? '✅' : ''}</td>
+      `;
+      tbody.appendChild(tr);
     });
   }
 
-  renderMarketTable(data) {
-    const tbody = document.getElementById('market-data-body');
-    if (!tbody) return;
+  renderSignalLog() {
+    const tbody = document.getElementById('signal-log-body');
     tbody.innerHTML = '';
-
-    data.forEach(coin => {
-      const row = document.createElement('tr');
-      row.dataset.symbol = coin.symbol;
-      row.innerHTML = `
-        <td class="fw-bold">${coin.symbol}</td>
-        <td>₩${Math.round(coin.price).toLocaleString()}</td>
-        <td class="${coin.change24h >= 0 ? 'change-positive' : 'change-negative'}">
-          ${coin.change24h.toFixed(2)}%
-        </td>
-        <td>${coin.rsi.toFixed(1)}</td>
-        <td>${coin.macd.macd.toFixed(3)}</td>
-        <td>${coin.cci.toFixed(1)}</td>
-        <td>₩${coin.inflow?.toLocaleString() || 'N/A'}</td>
-        <td>${coin.volume.toLocaleString()}</td>
-        <td>₩${coin.buyZone ? Math.round(coin.buyZone).toLocaleString() : '-'}</td>
-        <td><span class="signal signal-strong-buy">강력 매수</span></td>
-        <td><button class="btn btn--sm action-button btn--primary">매수</button></td>
+    this.signalLog.slice(-10).reverse().forEach(log => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${log.time}</td>
+        <td>${log.coin}</td>
+        <td>${log.close.toLocaleString()}</td>
+        <td>${log.rsi}</td>
+        <td>${log.macd}</td>
+        <td>${log.cci}</td>
+        <td>${log.onchain}</td>
+        <td>${log.volume.toLocaleString()}</td>
+        <td>${log.buyZone.toLocaleString()}</td>
       `;
-      row.addEventListener('click', () => {
-        this.selectedCoin = coin.symbol;
-        this.updateChart(coin.symbol);
-      });
-      tbody.appendChild(row);
+      tbody.appendChild(tr);
     });
+  }
+
+  mockIndicator() {
+    return Math.floor(Math.random() * 100);
+  }
+
+  mockOnchain() {
+    return Math.floor(Math.random() * 1000);
+  }
+
+  generateMockHistory(latestPrice) {
+    const history = [];
+    for (let i = 0; i < 50; i++) {
+      const delta = (Math.random() - 0.5) * 0.1 * latestPrice;
+      history.push(latestPrice + delta);
+    }
+    return history;
+  }
+
+  calculateBuyZone(history) {
+    const sorted = history.sort((a, b) => a - b);
+    const idx = Math.floor(sorted.length * 0.2);
+    return Math.floor(sorted[idx]);
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  window.dashboard = new BithumDashboard();
-});
+// 실행
+new BithumbDashboard();
