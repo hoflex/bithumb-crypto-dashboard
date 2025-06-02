@@ -2,9 +2,13 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bithumb Crypto Dashboard</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .hidden { display: none; }
+    .signal-log-container { margin-top: 20px; }
+  </style>
 </head>
 <body>
   <h1>📈 강력매수 시그널 대시보드</h1>
@@ -22,7 +26,7 @@
           <th>CCI</th>
           <th>온체인 유입</th>
           <th>거래량</th>
-          <th>매수 적정가</th> <!-- 추가된 부분 -->
+          <th>매수 적정가</th>
           <th>시그널</th>
           <th>매수</th>
         </tr>
@@ -31,26 +35,40 @@
     </table>
   </section>
 
-  <section>
-    <h2>📝 강력 매수 시그널 로그</h2>
-    <table>
-      <thead id="signal-log-head">
-        <tr>
-          <th>시간</th>
-          <th>코인</th>
-          <th>현재가</th>
-          <th>RSI</th>
-          <th>MACD</th>
-          <th>CCI</th>
-          <th>온체인 유입</th>
-          <th>거래량</th>
-          <th>매수 적정가</th> <!-- 추가된 부분 -->
-        </tr>
-      </thead>
-      <tbody id="signal-log-body"></tbody>
-    </table>
+  <section class="signal-log-container">
+    <button id="show-signal-log">시그널 로그 보기/닫기</button>
+    <div id="signal-log" class="hidden">
+      <h2>📝 강력 매수 시그널 로그</h2>
+      <table>
+        <thead id="signal-log-head">
+          <tr>
+            <th>시간</th>
+            <th>코인</th>
+            <th>현재가</th>
+            <th>RSI</th>
+            <th>MACD</th>
+            <th>CCI</th>
+            <th>온체인 유입</th>
+            <th>거래량</th>
+            <th>매수 적정가</th>
+          </tr>
+        </thead>
+        <tbody id="signal-log-body"></tbody>
+      </table>
+    </div>
   </section>
 
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggleBtn = document.getElementById('show-signal-log');
+      const logDiv = document.getElementById('signal-log');
+      if (toggleBtn && logDiv) {
+        toggleBtn.addEventListener('click', () => {
+          logDiv.classList.toggle('hidden');
+        });
+      }
+    });
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
