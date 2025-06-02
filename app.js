@@ -1,4 +1,4 @@
-// app.js (v3)
+// app.js (v3.1 with fallback display and signal levels)
 class BithumbDashboard {
   constructor() {
     this.apiBase = "https://api.bithumb.com/public/ticker/ALL_KRW";
@@ -19,18 +19,24 @@ class BithumbDashboard {
       const data = json.data;
       const now = new Date().toLocaleTimeString();
 
-      const filteredCoins = Object.entries(data)
+      const processedCoins = Object.entries(data)
         .filter(([key, val]) => key !== 'date' && !isNaN(parseFloat(val.fluctate_rate_24H)))
         .map(([symbol, val]) => {
           const fluctate = parseFloat(val.fluctate_rate_24H);
           const price = parseFloat(val.closing_price);
           const volume = parseFloat(val.units_traded_24H);
           const onchain = Math.random() * 100;
-          const rsi = Math.floor(60 + Math.random() * 40);
-          const macd = Math.floor(60 + Math.random() * 40);
-          const cci = Math.floor(60 + Math.random() * 40);
+          const rsi = Math.floor(50 + Math.random() * 50);
+          const macd = Math.floor(50 + Math.random() * 50);
+          const cci = Math.floor(50 + Math.random() * 50);
           const fairPrice = price * 0.96;
-          const signal = rsi > 60 && macd > 60 && cci > 60 && fluctate > 2 ? "강력매수" : "";
+
+          let signal = "관망";
+          if (rsi > 70 && macd > 70 && cci > 70 && fluctate > 2) {
+            signal = "강력매수";
+          } else if (rsi > 60 && macd > 60 && cci > 60 && fluctate > 1) {
+            signal = "약매수";
+          }
 
           return {
             symbol,
@@ -46,12 +52,11 @@ class BithumbDashboard {
             time: now
           };
         })
-        .filter(coin => coin.signal === "강력매수")
         .sort((a, b) => b.fluctate - a.fluctate)
         .slice(0, this.maxCoins);
 
-      this.renderTable(filteredCoins);
-      this.renderSignalLog(filteredCoins);
+      this.renderTable(processedCoins);
+      this.renderSignalLog(processedCoins.filter(c => c.signal === "강력매수"));
     } catch (err) {
       console.error("데이터 로딩 오류:", err);
     }
