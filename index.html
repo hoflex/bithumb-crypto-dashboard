@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>비썸 트레이딩 시그널 대시보드</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="container flex justify-between items-center py-16">
+      <h1>비썸 트레이딩 시그널 대시보드</h1>
+      <div class="flex gap-16 items-center">
+        <div class="last-update">
+          <span class="label">마지막 업데이트:</span>
+          <span id="last-update-time">로딩 중...</span>
+        </div>
+        <button id="settings-btn" class="btn btn--secondary">
+          <span>설정</span>
+        </button>
+        <button id="theme-toggle" class="btn btn--outline">
+          <span>테마 변경</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>데이터 로딩 중...</p>
+    </div>
+
+    <div id="error-container" class="error-container hidden">
+      <p>API 연결 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
+      <button id="retry-button" class="btn btn--primary mt-8">다시 시도</button>
+    </div>
+
+    <section id="alerts-section" class="alerts-section card mb-8">
+      <div class="card__header">
+        <h2>특별 알림</h2>
+      </div>
+      <div class="card__body">
+        <div id="alerts-container" class="alerts-container">
+          <p id="no-alerts" class="no-alerts">현재 강력 매수/매도 신호가 없습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="dashboard-grid">
+      <section class="market-data card">
+        <div class="card__header flex justify-between items-center">
+          <h2>코인 시그널</h2>
+          <div class="filter-controls flex gap-8">
+            <select id="signal-filter" class="form-control">
+              <option value="ALL">모든 신호</option>
+              <option value="STRONG_BUY">강력 매수</option>
+              <option value="BUY">매수</option>
+              <option value="HOLD">홀딩</option>
+              <option value="SELL">매도</option>
+              <option value="STRONG_SELL">강력 매도</option>
+            </select>
+          </div>
+        </div>
+        <div class="card__body">
+          <div class="table-container">
+            <table id="market-table" class="market-table">
+              <thead>
+                <tr>
+                  <th data-sort="symbol">코인</th>
+                  <th data-sort="price">현재가</th>
+                  <th data-sort="change24h">24시간 변동</th>
+                  <th data-sort="rsi">RSI</th>
+                  <th data-sort="macd">MACD</th>
+                  <th data-sort="cci">CCI</th>
+                  <th data-sort="signal">신호</th>
+                  <th>액션</th>
+                </tr>
+              </thead>
+              <tbody id="market-data-body">
+                <!-- 여기에 데이터가 동적으로 추가됩니다 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="chart-section card">
+        <div class="card__header">
+          <h2 id="chart-title">차트</h2>
+        </div>
+        <div class="card__body">
+          <div id="chart-container" class="chart-container">
+            <canvas id="price-chart"></canvas>
+          </div>
+          <div id="chart-indicators" class="chart-indicators">
+            <div class="indicator">
+              <h4>RSI</h4>
+              <div id="rsi-value" class="indicator-value">-</div>
+            </div>
+            <div class="indicator">
+              <h4>MACD</h4>
+              <div id="macd-value" class="indicator-value">-</div>
+            </div>
+            <div class="indicator">
+              <h4>CCI</h4>
+              <div id="cci-value" class="indicator-value">-</div>
+            </div>
+            <div class="indicator">
+              <h4>OBV</h4>
+              <div id="obv-value" class="indicator-value">-</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container py-16">
+      <p>데이터 출처: Bithumb API. 이 대시보드는 투자 조언을 제공하지 않습니다. 투자는 본인의 책임하에 진행하세요.</p>
+      <p>실시간 데이터 기반 대시보드 (데모 데이터 아님)</p>
+    </div>
+  </footer>
+
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content card">
+      <div class="card__header flex justify-between items-center">
+        <h2>설정</h2>
+        <button id="close-settings" class="btn btn--secondary btn--sm">닫기</button>
+      </div>
+      <div class="card__body">
+        <div class="form-group">
+          <label class="form-label">RSI 과매수 임계값</label>
+          <input id="rsi-overbought" type="range" min="60" max="90" class="form-control" value="70">
+          <div class="flex justify-between">
+            <span>60</span>
+            <span id="rsi-overbought-value">70</span>
+            <span>90</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">RSI 과매도 임계값</label>
+          <input id="rsi-oversold" type="range" min="10" max="40" class="form-control" value="30">
+          <div class="flex justify-between">
+            <span>10</span>
+            <span id="rsi-oversold-value">30</span>
+            <span>40</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CCI 과매수 임계값</label>
+          <input id="cci-overbought" type="range" min="80" max="200" class="form-control" value="100">
+          <div class="flex justify-between">
+            <span>80</span>
+            <span id="cci-overbought-value">100</span>
+            <span>200</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CCI 과매도 임계값</label>
+          <input id="cci-oversold" type="range" min="-200" max="-80" class="form-control" value="-100">
+          <div class="flex justify-between">
+            <span>-200</span>
+            <span id="cci-oversold-value">-100</span>
+            <span>-80</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <button id="reset-settings" class="btn btn--secondary">기본값으로 재설정</button>
+          <button id="save-settings" class="btn btn--primary">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
